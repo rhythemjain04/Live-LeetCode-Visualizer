@@ -135,31 +135,58 @@ const RenderQueue = ({ nodes }: { nodes: VisualizationNode[] }) => (
 );
 
 // ─── Linked List ──────────────────────────────────────────────────────────────
-const RenderLinkedList = ({ nodes }: { nodes: VisualizationNode[] }) => {
-  if (nodes.length === 0) return (
-    <div className="text-center text-slate-500"><p className="text-lg">Empty Linked List</p></div>
-  );
-  const NODE_W = 72, NODE_H = 48, GAP = 56, Y = 140;
-  const totalW = Math.max(700, nodes.length * (NODE_W + GAP) + 80);
+// Split node list into separate chains by following `next` pointers.
+function splitLinkedListChains(nodes: VisualizationNode[]): VisualizationNode[][] {
+  if (nodes.length === 0) return [];
+  const idMap = new Map<string, VisualizationNode>(nodes.map(n => [n.id, n]));
+  const nextTargets = new Set<string>(nodes.filter(n => n.next).map(n => n.next!));
+  // Heads are nodes not referenced as `next` by any other node
+  const heads = nodes.filter(n => !nextTargets.has(n.id));
+  // If there are no heads (e.g. circular list), fall back to using all nodes as one chain
+  const startNodes = heads.length > 0 ? heads : nodes.slice(0, 1);
+  const visited = new Set<string>();
+  const chains: VisualizationNode[][] = [];
+  for (const head of startNodes) {
+    if (visited.has(head.id)) continue;
+    const chain: VisualizationNode[] = [];
+    let cur: VisualizationNode | undefined = head;
+    while (cur && !visited.has(cur.id)) {
+      visited.add(cur.id);
+      chain.push(cur);
+      cur = cur.next ? idMap.get(cur.next) : undefined;
+    }
+    if (chain.length > 0) chains.push(chain);
+  }
+  // Any orphan nodes not reachable from heads
+  const orphans = nodes.filter(n => !visited.has(n.id));
+  if (orphans.length > 0) chains.push(orphans);
+  return chains;
+}
+
+const RenderSingleLinkedListChain = ({ nodes, chainIndex }: { nodes: VisualizationNode[]; chainIndex: number }) => {
+  const NODE_W = 72, NODE_H = 48, GAP = 56, Y = 100;
+  const totalW = Math.max(600, nodes.length * (NODE_W + GAP) + 80);
   const edges: { x1: number; y1: number; x2: number; y2: number; fromId: string; toId: string }[] = [];
+  // Build a local position map for this chain
+  const idToIdx = new Map<string, number>(nodes.map((n, i) => [n.id, i]));
   nodes.forEach((node, i) => {
-    if (node.next) {
-      const targetIdx = nodes.findIndex(n => n.id === node.next);
-      if (targetIdx !== -1) {
-        const x1 = 60 + i * (NODE_W + GAP) + NODE_W;
-        const x2 = 60 + targetIdx * (NODE_W + GAP);
-        edges.push({ x1, y1: Y, x2, y2: Y, fromId: node.id, toId: node.next });
-      }
+    if (node.next && idToIdx.has(node.next)) {
+      const targetIdx = idToIdx.get(node.next)!;
+      const x1 = 60 + i * (NODE_W + GAP) + NODE_W;
+      const x2 = 60 + targetIdx * (NODE_W + GAP);
+      edges.push({ x1, y1: Y, x2, y2: Y, fromId: node.id, toId: node.next });
     }
   });
+  const arrowId = `ll-arrow-${chainIndex}`;
+  const glowId = `ll-glow-${chainIndex}`;
   return (
     <div className="overflow-x-auto w-full">
-      <svg width={totalW} height={220} viewBox={`0 0 ${totalW} 220`}>
+      <svg width={totalW} height={160} viewBox={`0 0 ${totalW} 160`}>
         <defs>
-          <marker id="ll-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <marker id={arrowId} markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
             <polygon points="0 0,8 3,0 6" fill="#475569" />
           </marker>
-          <filter id="ll-glow"><feGaussianBlur stdDeviation="3" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+          <filter id={glowId}><feGaussianBlur stdDeviation="3" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
         </defs>
         <AnimatePresence>
           {edges.map((e, i) => {
@@ -173,10 +200,11 @@ const RenderLinkedList = ({ nodes }: { nodes: VisualizationNode[] }) => {
               <motion.path key={`${e.fromId}-${e.toId}`}
                 initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.8 }}
                 exit={{ opacity: 0 }} transition={{ duration: 0.4, delay: i * 0.05 }}
-                d={d} fill="none" stroke="#475569" strokeWidth="2" markerEnd="url(#ll-arrow)" />
+                d={d} fill="none" stroke="#475569" strokeWidth="2" markerEnd={`url(#${arrowId})`} />
             );
           })}
         </AnimatePresence>
+        {/* null terminator after last node */}
         <text x={60 + nodes.length * (NODE_W + GAP) - 10} y={Y + 5}
           fill="#475569" fontSize="12" fontFamily="monospace">null</text>
         <AnimatePresence>
@@ -212,6 +240,30 @@ const RenderLinkedList = ({ nodes }: { nodes: VisualizationNode[] }) => {
           })}
         </AnimatePresence>
       </svg>
+    </div>
+  );
+};
+
+const RenderLinkedList = ({ nodes }: { nodes: VisualizationNode[] }) => {
+  const chains = splitLinkedListChains(nodes);
+  if (chains.length === 0) return (
+    <div className="text-center text-slate-500"><p className="text-lg">Empty Linked List</p></div>
+  );
+  return (
+    <div className="flex flex-col gap-6 w-full">
+      {chains.map((chain, ci) => (
+        <div key={`chain-${ci}`} className="w-full">
+          {chains.length > 1 && (
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-[10px] font-mono text-purple-400 bg-purple-400/10 border border-purple-400/20 rounded px-2 py-0.5">
+                List {ci + 1}
+              </span>
+              <span className="text-[10px] text-slate-600">{chain.length} node{chain.length !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+          <RenderSingleLinkedListChain nodes={chain} chainIndex={ci} />
+        </div>
+      ))}
     </div>
   );
 };

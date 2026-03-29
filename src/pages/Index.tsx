@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, CSSProperties } from 'react';
 import { ResponsiveGridLayout } from 'react-grid-layout';
 import Header from '@/components/Header';
 import ControlBar from '@/components/ControlBar';
@@ -30,23 +30,9 @@ const DEFAULT_LAYOUTS: Record<string, any[]> = {
   ],
 };
 
-const FULLSCREEN_LAYOUTS: Record<string, any[]> = {
-  lg: [
-    { i: 'code',      x: 0, y: 0, w: 5,  h: 14, minW: 3, minH: 6, isDraggable: false, isResizable: true },
-    { i: 'viz',       x: 5, y: 0, w: 7,  h: 14, minW: 3, minH: 6, isResizable: true },
-    { i: 'variables', x: 0, y: 0, w: 0, h: 0, static: true },
-  ],
-  md: [
-    { i: 'code',      x: 0, y: 0, w: 4,  h: 12, minW: 3, minH: 6, isDraggable: false, isResizable: true },
-    { i: 'viz',       x: 4, y: 0, w: 6,  h: 12, minW: 3, minH: 6, isResizable: true },
-    { i: 'variables', x: 0, y: 0, w: 0, h: 0, static: true },
-  ],
-  sm: [
-    { i: 'code',      x: 0, y: 0, w: 6,  h: 8, minW: 3, minH: 6, isDraggable: false, isResizable: true },
-    { i: 'viz',       x: 0, y: 8, w: 6, h: 12, minW: 3, minH: 6, isResizable: true },
-    { i: 'variables', x: 0, y: 0, w: 0, h: 0, static: true },
-  ],
-};
+// Fullscreen: fixed pixel sizes — viz 1077×739, code fills rest
+const VIZ_FS_W = 1077;
+const VIZ_FS_H = 739;
 
 function loadLayouts() {
   try {
@@ -86,7 +72,7 @@ const Index = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
 
-  const layouts = vizFullscreen ? FULLSCREEN_LAYOUTS : normalLayouts;
+  const layouts = normalLayouts;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -125,58 +111,97 @@ const Index = () => {
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
+  // Fullscreen fixed-pixel layout styles
+  const fsContainerStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: 'row',
+    width: '100%',
+    height: '100%',
+    gap: '8px',
+    padding: '8px',
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+  };
+
   return (
     <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">
       <Header onResetLayout={resetLayout} />
       <ControlBar />
 
       <div className="flex-1 overflow-auto relative" ref={containerRef}>
-        <ResponsiveGridLayout
-          className="layout"
-          layouts={layouts}
-          breakpoints={{ lg: 1200, md: 768, sm: 0 }}
-          cols={{ lg: 12, md: 10, sm: 6 }}
-          rowHeight={30}
-          width={containerWidth}
-          onLayoutChange={onLayoutChange}
-          draggableHandle=".panel-drag-handle"
-          compactType="vertical"
-          margin={[8, 8]}
-          containerPadding={[8, 8]}
-          isResizable={true}
-          resizeHandles={['se', 'e', 's']}
-        >
-          {/* Code Editor — resizable only, NOT draggable */}
-          <div key="code" style={panelStyle}>
-            <div style={panelContentStyle}>
-              <CodeEditor />
-            </div>
-          </div>
-
-          {/* Visualization — draggable + resizable */}
-          <div key="viz" style={panelStyle}>
-            <div style={panelContentStyle}>
-              <div className="panel-drag-handle h-6 flex items-center justify-center cursor-grab active:cursor-grabbing bg-white/3 border-b border-white/5 select-none">
-                <div className="w-8 h-1 rounded-full bg-white/15" />
+        {vizFullscreen ? (
+          /* ── Fullscreen mode: fixed pixel sizes ── */
+          <div style={fsContainerStyle}>
+            {/* Code editor — fills remaining left space */}
+            <div style={{ ...panelStyle, flex: '1 1 0', minWidth: 0, height: '100%', overflow: 'hidden' }}>
+              <div style={{ ...panelContentStyle }}>
+                <CodeEditor />
               </div>
-              <div style={{ height: 'calc(100% - 24px)' }}>
+            </div>
+
+            {/* Viz panel — fixed 1077×739 */}
+            <div style={{
+              ...panelStyle,
+              width: VIZ_FS_W,
+              height: VIZ_FS_H,
+              flexShrink: 0,
+              overflow: 'hidden',
+              alignSelf: 'flex-start',
+            }}>
+              <div style={panelContentStyle}>
                 <VisualizationPanel onToggleFullscreen={() => setVizFullscreen(f => !f)} isFullscreen={vizFullscreen} />
               </div>
             </div>
           </div>
-
-          {/* Variables — draggable + resizable, hidden in fullscreen */}
-          <div key="variables" style={{ ...panelStyle, display: vizFullscreen ? 'none' : undefined }}>
-            <div style={panelContentStyle}>
-              <div className="panel-drag-handle h-6 flex items-center justify-center cursor-grab active:cursor-grabbing bg-white/3 border-b border-white/5 select-none">
-                <div className="w-8 h-1 rounded-full bg-white/15" />
-              </div>
-              <div style={{ height: 'calc(100% - 24px)' }}>
-                <VariablesPanel />
+        ) : (
+          /* ── Normal mode: responsive grid ── */
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={layouts}
+            breakpoints={{ lg: 1200, md: 768, sm: 0 }}
+            cols={{ lg: 12, md: 10, sm: 6 }}
+            rowHeight={30}
+            width={containerWidth}
+            onLayoutChange={onLayoutChange}
+            draggableHandle=".panel-drag-handle"
+            compactType="vertical"
+            margin={[8, 8]}
+            containerPadding={[8, 8]}
+            isResizable={true}
+            resizeHandles={['se', 'e', 's', 'sw', 'w', 'n', 'ne', 'nw']}
+          >
+            {/* Code Editor — resizable only, NOT draggable */}
+            <div key="code" style={panelStyle}>
+              <div style={panelContentStyle}>
+                <CodeEditor />
               </div>
             </div>
-          </div>
-        </ResponsiveGridLayout>
+
+            {/* Visualization — draggable + resizable */}
+            <div key="viz" style={panelStyle}>
+              <div style={panelContentStyle}>
+                <div className="panel-drag-handle h-6 flex items-center justify-center cursor-grab active:cursor-grabbing bg-white/3 border-b border-white/5 select-none">
+                  <div className="w-8 h-1 rounded-full bg-white/15" />
+                </div>
+                <div style={{ height: 'calc(100% - 24px)' }}>
+                  <VisualizationPanel onToggleFullscreen={() => setVizFullscreen(f => !f)} isFullscreen={vizFullscreen} />
+                </div>
+              </div>
+            </div>
+
+            {/* Variables — draggable + resizable */}
+            <div key="variables" style={panelStyle}>
+              <div style={panelContentStyle}>
+                <div className="panel-drag-handle h-6 flex items-center justify-center cursor-grab active:cursor-grabbing bg-white/3 border-b border-white/5 select-none">
+                  <div className="w-8 h-1 rounded-full bg-white/15" />
+                </div>
+                <div style={{ height: 'calc(100% - 24px)' }}>
+                  <VariablesPanel />
+                </div>
+              </div>
+            </div>
+          </ResponsiveGridLayout>
+        )}
       </div>
 
       <TimelineBar />
