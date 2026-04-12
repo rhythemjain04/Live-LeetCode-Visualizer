@@ -1,5 +1,6 @@
 import { ExecutionStep } from '@/store/visualizerStore';
 import { javaEventsToSteps } from './javaTraceAdapter';
+import { apiUrl } from './api';
 
 interface JavaDebugRunResponse {
   runId: string;
@@ -14,7 +15,7 @@ export async function generateJavaExecutionSteps(
   code: string,
   className: string
 ): Promise<ExecutionStep[]> {
-  const runRes = await fetch('/api/run-java-debug', {
+  const runRes = await fetch(apiUrl('/api/run-java-debug'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -51,7 +52,7 @@ export async function generateJavaExecutionSteps(
     // eslint-disable-next-line no-await-in-loop
     await new Promise((resolve) => setTimeout(resolve, 400));
     // eslint-disable-next-line no-await-in-loop
-    const evRes = await fetch(`/api/java-events?runId=${encodeURIComponent(runId)}`);
+    const evRes = await fetch(apiUrl(`/api/java-events?runId=${encodeURIComponent(runId)}`));
     if (!evRes.ok) {
       attempts++;
       continue;
@@ -66,4 +67,3 @@ export async function generateJavaExecutionSteps(
 
   return javaEventsToSteps(events);
 }
-

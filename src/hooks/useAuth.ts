@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiUrl } from '@/lib/api';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -20,7 +21,7 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(apiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -47,7 +48,7 @@ export const useAuth = () => {
 
   const register = async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch(apiUrl('/api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name }),

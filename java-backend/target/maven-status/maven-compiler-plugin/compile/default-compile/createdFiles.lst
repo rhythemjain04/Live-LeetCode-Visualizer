@@ -20,6 +20,7 @@ com/codestep/visualizer/model/DataStructureInfo.class
 com/codestep/visualizer/service/PythonExecutionService.class
 com/codestep/visualizer/controller/ExecutionController.class
 com/codestep/visualizer/model/Visualization.class
+com/codestep/visualizer/config/WebConfig.class
 com/codestep/visualizer/VisualizerApplication.class
 com/codestep/visualizer/model/AppUser.class
 com/codestep/visualizer/model/VisualizationNode$VisualizationNodeBuilder.class

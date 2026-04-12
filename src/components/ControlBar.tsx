@@ -12,6 +12,7 @@ import { useVisualizerStore, DataStructureType, ProgrammingLanguage } from '@/st
 import { getSnippetsByLanguage, CodeSnippet } from '@/data/codeSnippets';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { apiUrl } from '@/lib/api';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,7 +89,7 @@ const ControlBar = () => {
 
   const handleRun = async () => {
     try {
-      const res = await fetch('/api/execute', {
+      const res = await fetch(apiUrl('/api/execute'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

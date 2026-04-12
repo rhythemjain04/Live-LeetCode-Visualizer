@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: leetcodevizualizer-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./java-backend/Dockerfile
+    dockerContext: ./java-backend
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+        value: org.postgresql.Driver
+      - key: SPRING_JPA_DATABASE_PLATFORM
+        value: org.hibernate.dialect.PostgreSQLDialect
+      - key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        value: update
+      - key: APP_CORS_ALLOWED_ORIGINS
+        sync: false
+
+  - type: static_site
+    name: leetcodevizualizer-web
+    rootDir: .
+    buildCommand: npm ci && npm run build
+    publishDir: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false

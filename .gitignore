@@ -2,3 +2,14 @@ node_modules
 .idea
 frontend
 .env
+.gitnexus
+.claude
+AGENTS.md
+ATS_KEYWORD_GUIDE.md
+CLAUDE.md
+deployment.md
+RESUME_CUSTOMIZATION_GUIDE.md
+RhythemJain_Resume_Updated.md
+gitnexus
+.gitnexus/
+deps*
